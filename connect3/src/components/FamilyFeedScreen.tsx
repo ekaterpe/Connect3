@@ -2,6 +2,7 @@ import { Heart, MessageCircle, Clock, Send, Mic, Image as ImageIcon } from 'luci
 import { useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ScreenHeader } from './ScreenHeader';
+import { useApp } from '../context/AppContext';
 
 interface FeedPost {
   id: string;
@@ -74,22 +75,16 @@ const initialPosts: FeedPost[] = [
 ];
 
 export function FamilyFeedScreen({ onMenuClick, onTextSizeToggle, textSizeMultiplier = 1 }: { onMenuClick?: () => void; onTextSizeToggle?: () => void; textSizeMultiplier?: number }) {
-  const [posts, setPosts] = useState(initialPosts);
+  const { feedPosts, likePost, addComment } = useApp();
   const [commentText, setCommentText] = useState<{[key: string]: string}>({});
   const [showComments, setShowComments] = useState<{[key: string]: boolean}>({});
   const [isVoiceInput, setIsVoiceInput] = useState(false);
+  
+  // Initialize with default posts if empty
+  const displayPosts = feedPosts.length > 0 ? feedPosts : initialPosts;
 
   const handleLike = (postId: string) => {
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          isLiked: !post.isLiked,
-          likes: post.isLiked ? post.likes - 1 : post.likes + 1
-        };
-      }
-      return post;
-    }));
+    likePost(postId);
   };
 
   const handleComment = (postId: string, authorName: string) => {
@@ -116,9 +111,13 @@ export function FamilyFeedScreen({ onMenuClick, onTextSizeToggle, textSizeMultip
   const handleSendComment = (postId: string) => {
     const comment = commentText[postId];
     if (comment && comment.trim()) {
-      alert(`Comment sent: "${comment}"`);
+      addComment(postId, {
+        author: 'Вы',
+        text: comment.trim(),
+      });
       setCommentText({ ...commentText, [postId]: '' });
       setShowComments({ ...showComments, [postId]: false });
+      alert('Комментарий добавлен!');
     }
   };
 
@@ -144,7 +143,7 @@ export function FamilyFeedScreen({ onMenuClick, onTextSizeToggle, textSizeMultip
 
         {/* Feed Posts */}
         <div className="space-y-6">
-          {posts.map((post) => (
+          {displayPosts.map((post) => (
             <div
               key={post.id}
               className="bg-white rounded-3xl shadow-lg border-2 border-gray-100 overflow-hidden"
@@ -261,19 +260,32 @@ export function FamilyFeedScreen({ onMenuClick, onTextSizeToggle, textSizeMultip
                     </button>
                   </div>
 
-                  {/* Sample Comments */}
-                  <div className="mt-6 space-y-4">
-                    <div className="bg-white rounded-2xl p-5 border-2 border-gray-200">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-lg font-bold text-blue-700">You</span>
+                  {/* Comments List */}
+                  {post.commentsList && post.commentsList.length > 0 && (
+                    <div className="mt-6 space-y-4">
+                      {post.commentsList.map((comment) => (
+                        <div key={comment.id} className="bg-white rounded-2xl p-5 border-2 border-gray-200">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-lg font-bold text-blue-700">
+                                {comment.author === 'Вы' ? 'Вы' : comment.author[0]}
+                              </span>
+                            </div>
+                            <span className="text-xl font-bold text-gray-800">{comment.author}</span>
+                            <span className="text-lg text-gray-500">
+                              {new Date(comment.timestamp).toLocaleString('ru-RU', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                day: 'numeric',
+                                month: 'short'
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xl text-gray-700">{comment.text}</p>
                         </div>
-                        <span className="text-xl font-bold text-gray-800">Your previous comment</span>
-                      </div>
-                      <p className="text-xl text-gray-700">This is beautiful! Love you all! ❤️</p>
-                      <p className="text-base text-gray-500 mt-2">2 hours ago</p>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

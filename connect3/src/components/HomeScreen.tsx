@@ -12,10 +12,12 @@ import {
   Pill,
   Sparkles,
   X,
+  Plus,
 } from "lucide-react";
 import { FamilyPhotoCard } from "./FamilyPhotoCard";
 import { ActivityTracker } from "./ActivityTracker";
 import { useState } from "react";
+import { useApp } from "../context/AppContext";
 
 interface HomeScreenProps {
   onNavigate: (
@@ -39,38 +41,11 @@ export function HomeScreen({
   onTextSizeToggle,
   textSizeMultiplier = 1,
 }: HomeScreenProps) {
-  const [tasks, setTasks] = useState([
-    {
-      id: "1",
-      title: "Morning stretch",
-      icon: <Sparkles className="w-6 h-6 text-orange-500" />,
-      completed: true,
-      points: 10,
-    },
-    {
-      id: "2",
-      title: "Walk to shop",
-      icon: <Footprints className="w-6 h-6 text-green-500" />,
-      completed: false,
-      points: 15,
-    },
-    {
-      id: "3",
-      title: "Drink water",
-      icon: <Droplets className="w-6 h-6 text-blue-500" />,
-      completed: true,
-      points: 5,
-    },
-    {
-      id: "4",
-      title: "Medication",
-      icon: <Pill className="w-6 h-6 text-purple-500" />,
-      completed: true,
-      points: 10,
-    },
-  ]);
-
+  const { tasks, addTask, updateTask, deleteTask } = useApp();
   const [showTasksDialog, setShowTasksDialog] = useState(false);
+  const [showAddTaskForm, setShowAddTaskForm] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskPoints, setNewTaskPoints] = useState(10);
 
   const currentDate = new Date();
   const dateString = currentDate.toLocaleDateString("en-US", {
@@ -88,13 +63,51 @@ export function HomeScreen({
   };
 
   const handleToggleTask = (taskId: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId
-          ? { ...task, completed: !task.completed }
-          : task,
-      ),
-    );
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      updateTask(taskId, { completed: !task.completed });
+    }
+  };
+
+  const handleAddTask = () => {
+    if (newTaskTitle.trim()) {
+      const iconMap: { [key: string]: React.ReactNode } = {
+        stretch: <Sparkles className="w-6 h-6 text-orange-500" />,
+        walk: <Footprints className="w-6 h-6 text-green-500" />,
+        water: <Droplets className="w-6 h-6 text-blue-500" />,
+        medication: <Pill className="w-6 h-6 text-purple-500" />,
+      };
+      
+      const titleLower = newTaskTitle.toLowerCase();
+      let icon = <Sparkles className="w-6 h-6 text-amber-500" />;
+      
+      if (titleLower.includes('stretch') || titleLower.includes('exercise')) {
+        icon = iconMap.stretch;
+      } else if (titleLower.includes('walk') || titleLower.includes('step')) {
+        icon = iconMap.walk;
+      } else if (titleLower.includes('water') || titleLower.includes('drink')) {
+        icon = iconMap.water;
+      } else if (titleLower.includes('medication') || titleLower.includes('pill')) {
+        icon = iconMap.medication;
+      }
+      
+      addTask({
+        title: newTaskTitle,
+        icon,
+        completed: false,
+        points: newTaskPoints,
+      });
+      
+      setNewTaskTitle("");
+      setNewTaskPoints(10);
+      setShowAddTaskForm(false);
+    }
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    if (confirm("Удалить эту задачу?")) {
+      deleteTask(taskId);
+    }
   };
 
   const completedTasks = tasks.filter(
@@ -222,58 +235,156 @@ export function HomeScreen({
 
               {/* Tasks Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`rounded-2xl p-6 border-2 transition-all ${
-                      task.completed
-                        ? "bg-white border-green-200"
-                        : "bg-amber-50/50 border-amber-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div
-                        className={`rounded-xl p-3 ${
-                          task.completed
-                            ? "bg-green-50"
-                            : "bg-white"
-                        }`}
-                      >
-                        {task.icon}
-                      </div>
-                      <h3
-                        className={`text-2xl font-bold ${
-                          task.completed
-                            ? "text-gray-600 line-through"
-                            : "text-gray-800"
-                        }`}
-                      >
-                        {task.title}
-                      </h3>
-                    </div>
+                {tasks.length === 0 ? (
+                  <div className="col-span-2 text-center py-8">
+                    <p className="text-2xl text-gray-500 mb-4">Нет задач на сегодня</p>
                     <button
-                      onClick={() => handleToggleTask(task.id)}
-                      className={`w-full rounded-xl px-4 py-3 text-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                        task.completed
-                          ? "bg-green-100 text-green-700"
-                          : "bg-amber-500 text-white hover:bg-amber-600"
-                      }`}
+                      onClick={() => setShowAddTaskForm(true)}
+                      className="bg-purple-500 text-white rounded-2xl px-6 py-3 text-xl font-bold hover:bg-purple-600 transition-colors"
                     >
-                      {task.completed ? (
-                        <>
-                          <Check
-                            className="w-6 h-6"
-                            strokeWidth={2.5}
-                          />
-                          Done
-                        </>
-                      ) : (
-                        "Complete"
-                      )}
+                      Добавить задачу
                     </button>
                   </div>
-                ))}
+                ) : (
+                  tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={`rounded-2xl p-6 border-2 transition-all ${
+                        task.completed
+                          ? "bg-white border-green-200"
+                          : "bg-amber-50/50 border-amber-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        <div
+                          className={`rounded-xl p-3 ${
+                            task.completed
+                              ? "bg-green-50"
+                              : "bg-white"
+                          }`}
+                        >
+                          {task.icon}
+                        </div>
+                        <div className="flex-1">
+                          <h3
+                            className={`text-2xl font-bold ${
+                              task.completed
+                                ? "text-gray-600 line-through"
+                                : "text-gray-800"
+                            }`}
+                          >
+                            {task.title}
+                          </h3>
+                          <p className="text-lg text-amber-600 font-semibold">
+                            {task.points} очков
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Удалить задачу"
+                        >
+                          <X className="w-6 h-6" strokeWidth={2.5} />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleToggleTask(task.id)}
+                        className={`w-full rounded-xl px-4 py-3 text-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                          task.completed
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-500 text-white hover:bg-amber-600"
+                        }`}
+                      >
+                        {task.completed ? (
+                          <>
+                            <Check
+                              className="w-6 h-6"
+                              strokeWidth={2.5}
+                            />
+                            Выполнено
+                          </>
+                        ) : (
+                          "Выполнить"
+                        )}
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
+
+              {/* Add Task Form */}
+              {showAddTaskForm && (
+                <div className="mt-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-3xl p-6 border-2 border-purple-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-3xl font-bold text-gray-800">Добавить задачу</h3>
+                    <button
+                      onClick={() => {
+                        setShowAddTaskForm(false);
+                        setNewTaskTitle("");
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="w-8 h-8" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xl font-bold text-gray-800 mb-2">
+                        Название задачи
+                      </label>
+                      <input
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        className="w-full text-2xl p-5 border-4 border-gray-300 rounded-2xl focus:border-purple-500 focus:outline-none"
+                        placeholder="Например: Утренняя зарядка"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xl font-bold text-gray-800 mb-2">
+                        Очки за выполнение
+                      </label>
+                      <input
+                        type="number"
+                        value={newTaskPoints}
+                        onChange={(e) => setNewTaskPoints(Number(e.target.value))}
+                        className="w-full text-2xl p-5 border-4 border-gray-300 rounded-2xl focus:border-purple-500 focus:outline-none"
+                        min="1"
+                        max="50"
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setShowAddTaskForm(false);
+                          setNewTaskTitle("");
+                        }}
+                        className="flex-1 bg-gray-200 text-gray-700 rounded-2xl p-5 text-xl font-bold hover:bg-gray-300 transition-colors"
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        onClick={handleAddTask}
+                        className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl p-5 text-xl font-bold hover:shadow-lg transition-all"
+                      >
+                        <Plus className="w-6 h-6 inline mr-2" strokeWidth={2.5} />
+                        Добавить
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Add Task Button */}
+              {!showAddTaskForm && tasks.length > 0 && (
+                <button
+                  onClick={() => setShowAddTaskForm(true)}
+                  className="w-full mt-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl p-5 text-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-3"
+                >
+                  <Plus className="w-8 h-8" strokeWidth={2.5} />
+                  Добавить новую задачу
+                </button>
+              )}
             </div>
           </div>
         </div>

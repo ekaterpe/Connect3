@@ -23,6 +23,7 @@ import { RemindersScreen } from "./src/components/RemindersScreen";
 import { SettingsScreen } from "./src/components/SettingsScreen";
 import { SignUpScreen } from "./src/components/SignUpScreen";
 import { VoiceControlMode } from "./src/components/VoiceControlMode";
+import { AppProvider } from "./src/context/AppContext";
 
 // Імпортуємо типи з правильним шляхом
 import {
@@ -172,31 +173,36 @@ export default function App() {
   if (!isLoggedIn) {
     if (authScreen === "signup") {
       return (
-        <SignUpScreen
-          onSignUp={handleSignUp}
-          onBackToLogin={() => setAuthScreen("login")}
-        />
+        <AppProvider>
+          <SignUpScreen
+            onSignUp={handleSignUp}
+            onBackToLogin={() => setAuthScreen("login")}
+          />
+        </AppProvider>
       );
     }
     return (
-      <LoginScreen
-        onLogin={handleLogin}
-        onSignUp={() => setAuthScreen("signup")}
-      />
+      <AppProvider>
+        <LoginScreen
+          onLogin={handleLogin}
+          onSignUp={() => setAuthScreen("signup")}
+        />
+      </AppProvider>
     );
   }
 
   // Якщо в voice mode, показуємо voice control interface
   if (appMode === "voice") {
     return (
-      <div
-        className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50"
-        style={{
-          fontSize:
-            textSizeMultiplier === 1.5 ? "1.5rem" : "1rem",
-        }}
-      >
-        <VoiceControlMode />
+      <AppProvider>
+        <div
+          className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50"
+          style={{
+            fontSize:
+              textSizeMultiplier === 1.5 ? "1.5rem" : "1rem",
+          }}
+        >
+          <VoiceControlMode />
 
         {/* Mode Switch Button */}
         <button
@@ -232,10 +238,11 @@ export default function App() {
         >
           <PhoneCall
             className="w-8 h-8 text-white"
-            strokeWidth={3}
-          />
-        </button>
+          strokeWidth={3}
+        />
+      </button>
       </div>
+      </AppProvider>
     );
   }
 
@@ -272,13 +279,14 @@ export default function App() {
   };
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex flex-col"
-      style={{
-        fontSize:
-          textSizeMultiplier === 1.5 ? "1.5rem" : "1rem",
-      }}
-    >
+    <AppProvider>
+      <div
+        className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex flex-col"
+        style={{
+          fontSize:
+            textSizeMultiplier === 1.5 ? "1.5rem" : "1rem",
+        }}
+      >
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto pb-24">
         {renderScreen()}
@@ -434,5 +442,6 @@ export default function App() {
         />
       </button>
     </div>
+    </AppProvider>
   );
 }

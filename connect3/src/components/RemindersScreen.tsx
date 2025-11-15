@@ -1,6 +1,7 @@
-import { Pill, Clock, Check, Plus } from 'lucide-react';
+import { Pill, Clock, Check, Plus, X, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ScreenHeader } from './ScreenHeader';
+import { useApp } from '../context/AppContext';
 
 interface Reminder {
   id: string;
@@ -10,40 +11,42 @@ interface Reminder {
   taken: boolean;
 }
 
-const initialReminders: Reminder[] = [
-  {
-    id: '1',
-    medicationName: 'Blood Pressure Medication',
-    time: '8:00 AM',
-    dosage: '1 tablet',
-    taken: true
-  },
-  {
-    id: '2',
-    medicationName: 'Vitamin D',
-    time: '12:00 PM',
-    dosage: '1 capsule',
-    taken: false
-  },
-  {
-    id: '3',
-    medicationName: 'Evening Medication',
-    time: '6:00 PM',
-    dosage: '2 tablets',
-    taken: false
-  }
-];
-
 export function RemindersScreen({ onMenuClick, onTextSizeToggle, textSizeMultiplier = 1 }: { onMenuClick?: () => void; onTextSizeToggle?: () => void; textSizeMultiplier?: number }) {
-  const [reminders, setReminders] = useState(initialReminders);
+  const { reminders, addReminder, updateReminder, deleteReminder } = useApp();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [newMedicationName, setNewMedicationName] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [newDosage, setNewDosage] = useState('1 tablet');
 
   const markAsTaken = (reminderId: string) => {
-    setReminders(reminders.map(reminder => 
-      reminder.id === reminderId 
-        ? { ...reminder, taken: !reminder.taken }
-        : reminder
-    ));
+    const reminder = reminders.find(r => r.id === reminderId);
+    if (reminder) {
+      updateReminder(reminderId, { taken: !reminder.taken });
+    }
+  };
+
+  const handleAddReminder = () => {
+    if (newMedicationName.trim() && newTime.trim()) {
+      addReminder({
+        medicationName: newMedicationName,
+        time: newTime,
+        dosage: newDosage,
+        taken: false,
+      });
+      setNewMedicationName('');
+      setNewTime('');
+      setNewDosage('1 tablet');
+      setShowAddForm(false);
+      alert('Напоминание добавлено!');
+    } else {
+      alert('Пожалуйста, заполните все поля');
+    }
+  };
+
+  const handleDeleteReminder = (reminderId: string) => {
+    if (confirm('Удалить это напоминание?')) {
+      deleteReminder(reminderId);
+    }
   };
 
   const getCurrentTime = () => {
@@ -108,26 +111,35 @@ export function RemindersScreen({ onMenuClick, onTextSizeToggle, textSizeMultipl
                 </div>
               </div>
 
-              {/* Action Button */}
-              <button
-                onClick={() => markAsTaken(reminder.id)}
-                className={`w-full rounded-3xl p-6 text-2xl font-bold transition-all active:scale-98 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl ${
-                  reminder.taken
-                    ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700'
-                }`}
-              >
-                {reminder.taken ? (
-                  <>
-                    <Check className="w-10 h-10" strokeWidth={3} />
-                    Taken
-                  </>
-                ) : (
-                  <>
-                    Mark as Taken
-                  </>
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleDeleteReminder(reminder.id)}
+                  className="p-4 bg-red-100 text-red-700 rounded-2xl hover:bg-red-200 transition-colors"
+                  title="Удалить напоминание"
+                >
+                  <Trash2 className="w-8 h-8" strokeWidth={2.5} />
+                </button>
+                <button
+                  onClick={() => markAsTaken(reminder.id)}
+                  className={`flex-1 rounded-3xl p-6 text-2xl font-bold transition-all active:scale-98 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl ${
+                    reminder.taken
+                      ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700'
+                  }`}
+                >
+                  {reminder.taken ? (
+                    <>
+                      <Check className="w-10 h-10" strokeWidth={3} />
+                      Принято
+                    </>
+                  ) : (
+                    <>
+                      Отметить как принято
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -141,45 +153,76 @@ export function RemindersScreen({ onMenuClick, onTextSizeToggle, textSizeMultipl
           <span className="text-2xl font-bold">Add New Reminder</span>
         </button>
 
-        {/* Simple Add Form (placeholder) */}
+        {/* Add Form */}
         {showAddForm && (
           <div className="bg-white rounded-3xl p-8 shadow-2xl border-2 border-purple-200">
-            <h3 className="text-3xl font-bold text-gray-800 mb-6">New Reminder</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-3xl font-bold text-gray-800">Новое напоминание</h3>
+              <button
+                onClick={() => {
+                  setShowAddForm(false);
+                  setNewMedicationName('');
+                  setNewTime('');
+                  setNewDosage('1 tablet');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-8 h-8" strokeWidth={2.5} />
+              </button>
+            </div>
             <div className="space-y-6">
               <div>
                 <label className="block text-xl font-semibold text-gray-800 mb-3">
-                  Medication Name
+                  Название лекарства
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter medication name"
+                  value={newMedicationName}
+                  onChange={(e) => setNewMedicationName(e.target.value)}
+                  placeholder="Например: Таблетки от давления"
                   className="w-full text-2xl p-6 border-4 border-gray-300 rounded-2xl focus:border-purple-500 focus:outline-none transition-colors"
                 />
               </div>
               <div>
                 <label className="block text-xl font-semibold text-gray-800 mb-3">
-                  Time
+                  Время приема
                 </label>
                 <input
                   type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
                   className="w-full text-3xl p-5 border-4 border-gray-300 rounded-2xl focus:border-purple-500 focus:outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xl font-semibold text-gray-800 mb-3">
+                  Дозировка
+                </label>
+                <input
+                  type="text"
+                  value={newDosage}
+                  onChange={(e) => setNewDosage(e.target.value)}
+                  placeholder="Например: 1 таблетка"
+                  className="w-full text-2xl p-6 border-4 border-gray-300 rounded-2xl focus:border-purple-500 focus:outline-none transition-colors"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <button
-                  onClick={() => setShowAddForm(false)}
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setNewMedicationName('');
+                    setNewTime('');
+                    setNewDosage('1 tablet');
+                  }}
                   className="bg-gray-200 text-gray-700 rounded-2xl p-5 text-xl font-bold hover:bg-gray-300 transition-all active:scale-98"
                 >
-                  Cancel
+                  Отмена
                 </button>
                 <button
-                  onClick={() => {
-                    alert('Reminder added!');
-                    setShowAddForm(false);
-                  }}
+                  onClick={handleAddReminder}
                   className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl p-5 text-xl font-bold hover:shadow-lg transition-all active:scale-98"
                 >
-                  Save
+                  Сохранить
                 </button>
               </div>
             </div>

@@ -1,7 +1,8 @@
-import { Phone, Video, MessageSquare, UserPlus, Users, X, Heart } from 'lucide-react';
+import { Phone, Video, MessageSquare, UserPlus, Users, X, Heart, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ScreenHeader } from './ScreenHeader';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { useApp } from '../context/AppContext';
 
 interface Contact {
   phoneNumber: string; // Unique key
@@ -63,11 +64,14 @@ const initialContacts: Contact[] = [
 ];
 
 export function FamilyScreen({ onMenuClick, onTextSizeToggle, textSizeMultiplier = 1 }: { onMenuClick?: () => void; onTextSizeToggle?: () => void; textSizeMultiplier?: number }) {
-  const [contacts, setContacts] = useState<Contact[]>(initialContacts);
+  const { contacts, addContact, removeContact } = useApp();
   const [showAddForm, setShowAddForm] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [autoPopulated, setAutoPopulated] = useState(false);
   const [previewContact, setPreviewContact] = useState<Contact | null>(null);
+  
+  // Initialize with default contacts if empty
+  const displayContacts = contacts.length > 0 ? contacts : initialContacts;
 
   const handleCall = (name: string, phone: string) => {
     alert(`Calling ${name} at ${phone}...`);
@@ -103,25 +107,25 @@ export function FamilyScreen({ onMenuClick, onTextSizeToggle, textSizeMultiplier
   const handleAddContact = () => {
     if (phoneInput.length === 10) {
       // Check if contact already exists
-      if (contacts.some(c => c.phoneNumber === phoneInput)) {
-        alert('This contact is already in your list!');
+      if (displayContacts.some(c => c.phoneNumber === phoneInput)) {
+        alert('Этот контакт уже в вашем списке!');
         return;
       }
 
       if (previewContact) {
         // Auto-populated contact
-        setContacts([...contacts, previewContact]);
-        alert(`${previewContact.name} added successfully!`);
+        addContact(previewContact);
+        alert(`${previewContact.name} успешно добавлен!`);
       } else {
         // Manual entry (phone not in database)
         const newContact: Contact = {
           phoneNumber: phoneInput,
-          name: 'Unknown Contact',
-          relationship: 'Contact',
+          name: 'Неизвестный контакт',
+          relationship: 'Контакт',
           photo: 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMHBsYWNlaG9sZGVyfGVufDF8fHx8MTc2MzIwMTk5Nnww&ixlib=rb-4.1.0&q=80&w=1080'
         };
-        setContacts([...contacts, newContact]);
-        alert('Contact added! (No profile found - manual setup needed)');
+        addContact(newContact);
+        alert('Контакт добавлен! (Профиль не найден - требуется ручная настройка)');
       }
       
       setPhoneInput('');
@@ -129,7 +133,13 @@ export function FamilyScreen({ onMenuClick, onTextSizeToggle, textSizeMultiplier
       setAutoPopulated(false);
       setShowAddForm(false);
     } else {
-      alert('Please enter a valid 10-digit phone number');
+      alert('Пожалуйста, введите 10-значный номер телефона');
+    }
+  };
+
+  const handleDeleteContact = (phoneNumber: string) => {
+    if (confirm('Удалить этот контакт из списка?')) {
+      removeContact(phoneNumber);
     }
   };
 
@@ -265,7 +275,7 @@ export function FamilyScreen({ onMenuClick, onTextSizeToggle, textSizeMultiplier
 
         {/* Contact Cards */}
         <div className="space-y-4">
-          {contacts.map((contact) => (
+          {displayContacts.map((contact) => (
             <div
               key={contact.phoneNumber}
               className="bg-white rounded-3xl p-6 shadow-lg border-2 border-gray-100"
@@ -277,11 +287,18 @@ export function FamilyScreen({ onMenuClick, onTextSizeToggle, textSizeMultiplier
                   alt={contact.name}
                   className="w-24 h-24 rounded-full object-cover border-4 border-blue-100"
                 />
-                <div>
+                <div className="flex-1">
                   <h2 className="text-3xl font-bold text-gray-800">{contact.name}</h2>
                   <p className="text-xl text-gray-500">{contact.relationship}</p>
                   <p className="text-lg text-gray-400 mt-1">{formatPhoneNumber(contact.phoneNumber)}</p>
                 </div>
+                <button
+                  onClick={() => handleDeleteContact(contact.phoneNumber)}
+                  className="text-red-500 hover:text-red-700 p-3 rounded-xl hover:bg-red-50 transition-colors"
+                  title="Удалить контакт"
+                >
+                  <Trash2 className="w-7 h-7" strokeWidth={2.5} />
+                </button>
               </div>
 
               {/* Action Buttons */}
