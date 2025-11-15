@@ -1,73 +1,174 @@
-import { useState } from "react";
-import { SignUpScreen } from "./components/SignUpScreen";
-import { LoginScreen } from "./components/LoginScreen";
-import { HomeScreen } from "./components/HomeScreen";
-import { FamilyScreen } from "./components/FamilyScreen";
-import { EventsScreen } from "./components/EventsScreen";
-import { RemindersScreen } from "./components/RemindersScreen";
-import { FamilyFeedScreen } from "./components/FamilyFeedScreen";
-import { PersonalDiaryScreen } from "./components/PersonalDiaryScreen";
-import { ProfileScreen } from "./components/ProfileScreen";
-import { SettingsScreen } from "./components/SettingsScreen";
-import { VoiceControlMode } from "./components/VoiceControlMode";
-import { PersistentMicButton } from "./components/PersistentMicButton";
 import {
-  Home,
-  Users,
-  Calendar,
   Bell,
-  Mic,
-  Menu,
-  Image,
   BookOpen,
-  User,
-  Settings,
+  Calendar,
+  Home,
+  Image,
+  Menu,
+  Mic,
   PhoneCall,
+  Settings,
+  User,
+  Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { EventsScreen } from "./src/components/EventsScreen";
+import { FamilyFeedScreen } from "./src/components/FamilyFeedScreen";
+import { FamilyScreen } from "./src/components/FamilyScreen";
+import { HomeScreen } from "./src/components/HomeScreen";
+import { LoginScreen } from "./src/components/LoginScreen";
+import { PersonalDiaryScreen } from "./src/components/PersonalDiaryScreen";
+import { ProfileScreen } from "./src/components/ProfileScreen";
+import { RemindersScreen } from "./src/components/RemindersScreen";
+import { SettingsScreen } from "./src/components/SettingsScreen";
+import { SignUpScreen } from "./src/components/SignUpScreen";
+import { VoiceControlMode } from "./src/components/VoiceControlMode";
 
-type Screen =
-  | "home"
-  | "family"
-  | "events"
-  | "reminders"
-  | "feed"
-  | "diary"
-  | "profile"
-  | "settings";
-type AppMode = "standard" | "voice";
-type AuthScreen = "login" | "signup";
+// Імпортуємо типи з правильним шляхом
+import {
+  AppMode,
+  AuthScreen,
+  Screen,
+  ScreenProps,
+  User as UserType
+} from "./src/types";
+
+// Базовий URL для API
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authScreen, setAuthScreen] =
-    useState<AuthScreen>("login");
+  const [authScreen, setAuthScreen] = useState<AuthScreen>("login");
   const [appMode, setAppMode] = useState<AppMode>("standard");
-  const [currentScreen, setCurrentScreen] =
-    useState<Screen>("home");
-  const [textSizeMultiplier, setTextSizeMultiplier] =
-    useState(1);
+  const [currentScreen, setCurrentScreen] = useState<Screen>("home");
+  const [textSizeMultiplier, setTextSizeMultiplier] = useState(1);
   const [showModeMenu, setShowModeMenu] = useState(false);
+  const [user, setUser] = useState<UserType | null>(null);
 
-  // Handle login
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-  };
-
-  // Handle signup
-  const handleSignUp = () => {
-    setIsLoggedIn(true);
-  };
-
-  // Handle emergency call
-  const handleEmergencyCall = () => {
-    if (confirm("Call Emergency Services (112)?")) {
-      alert(
-        "Calling 112...\n\nIn a real app, this would dial emergency services.",
-      );
+  // Функція для API запитів
+  const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
     }
   };
 
-  // If not logged in, show auth screens
+  // Оновлена функція логіну
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      const data = await apiRequest('/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      
+      if (data.success) {
+        setIsLoggedIn(true);
+        setUser(data.user);
+        // Збережіть токен для майбутніх запитів
+        localStorage.setItem('authToken', data.token);
+      } else {
+        alert(data.message || 'Login failed');
+      }
+    } catch (error) {
+      alert('Login failed. Please try again.');
+    }
+  };
+
+  // Оновлена функція реєстрації
+  const handleSignUp = async (userData: any) => {
+    try {
+      const data = await apiRequest('/signup', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
+      
+      if (data.success) {
+        setIsLoggedIn(true);
+        setUser(data.user);
+        localStorage.setItem('authToken', data.token);
+      } else {
+        alert(data.message || 'Signup failed');
+      }
+    } catch (error) {
+      alert('Signup failed. Please try again.');
+    }
+  };
+
+  // Оновлена функція екстреного виклику
+  const handleEmergencyCall = async () => {
+    if (confirm("Call Emergency Services (112)?")) {
+      try {
+        const data = await apiRequest('/emergency-call', {
+          method: 'POST',
+          body: JSON.stringify({ user_id: user?.id }),
+        });
+        
+        if (data.success) {
+          alert("Emergency services notified and family members alerted");
+        }
+      } catch (error) {
+        // У разі помилки API, все одно намагаємося здійснити виклик
+        alert("Calling 112...\n\nIn a real app, this would dial emergency services.");
+      }
+    }
+  };
+
+  // Завантаження даних при вході
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      // Завантажити дані для поточного екрану
+      loadScreenData(currentScreen);
+    }
+  }, [isLoggedIn, currentScreen]);
+
+  const loadScreenData = async (screen: Screen) => {
+    try {
+      switch (screen) {
+        case 'family':
+          const familyData = await apiRequest('/family-members');
+          // Передайте дані в компонент FamilyScreen
+          console.log('Family data:', familyData);
+          break;
+        case 'events':
+          const eventsData = await apiRequest('/events');
+          // Передайте дані в компонент EventsScreen
+          console.log('Events data:', eventsData);
+          break;
+        case 'reminders':
+          const remindersData = await apiRequest('/reminders');
+          // Передайте дані в компонент RemindersScreen
+          console.log('Reminders data:', remindersData);
+          break;
+        case 'feed':
+          const feedData = await apiRequest('/feed');
+          console.log('Feed data:', feedData);
+          break;
+        case 'diary':
+          const diaryData = await apiRequest('/diary');
+          console.log('Diary data:', diaryData);
+          break;
+        // ... інші екрани
+      }
+    } catch (error) {
+      console.error('Failed to load screen data:', error);
+    }
+  };
+
+  // Якщо не залогінений, показуємо auth екрани
   if (!isLoggedIn) {
     if (authScreen === "signup") {
       return (
@@ -85,7 +186,7 @@ export default function App() {
     );
   }
 
-  // If in voice mode, show voice control interface
+  // Якщо в voice mode, показуємо voice control interface
   if (appMode === "voice") {
     return (
       <div
@@ -138,47 +239,35 @@ export default function App() {
     );
   }
 
+  // Оновіть ваші компоненти, щоб вони приймали дані з API
   const renderScreen = () => {
-    const headerProps = {
+    const screenProps: ScreenProps = {
       onMenuClick: () => setShowModeMenu(!showModeMenu),
-      onTextSizeToggle: () =>
-        setTextSizeMultiplier(
-          textSizeMultiplier === 1 ? 1.5 : 1,
-        ),
+      onTextSizeToggle: () => setTextSizeMultiplier(textSizeMultiplier === 1 ? 1.5 : 1),
       textSizeMultiplier,
+      user,
+      onApiRequest: apiRequest,
     };
 
     switch (currentScreen) {
       case "home":
-        return (
-          <HomeScreen
-            onNavigate={setCurrentScreen}
-            onMenuClick={headerProps.onMenuClick}
-            onTextSizeToggle={headerProps.onTextSizeToggle}
-            textSizeMultiplier={headerProps.textSizeMultiplier}
-          />
-        );
+        return <HomeScreen {...screenProps} onNavigate={setCurrentScreen} />;
       case "family":
-        return <FamilyScreen {...headerProps} />;
+        return <FamilyScreen {...screenProps} />;
       case "events":
-        return <EventsScreen {...headerProps} />;
+        return <EventsScreen {...screenProps} />;
       case "reminders":
-        return <RemindersScreen {...headerProps} />;
+        return <RemindersScreen {...screenProps} />;
       case "feed":
-        return <FamilyFeedScreen {...headerProps} />;
+        return <FamilyFeedScreen {...screenProps} />;
       case "diary":
-        return <PersonalDiaryScreen {...headerProps} />;
+        return <PersonalDiaryScreen {...screenProps} />;
       case "profile":
-        return <ProfileScreen {...headerProps} />;
+        return <ProfileScreen {...screenProps} />;
       case "settings":
-        return <SettingsScreen {...headerProps} />;
+        return <SettingsScreen {...screenProps} />;
       default:
-        return (
-          <HomeScreen
-            onNavigate={setCurrentScreen}
-            {...headerProps}
-          />
-        );
+        return <HomeScreen {...screenProps} onNavigate={setCurrentScreen} />;
     }
   };
 
