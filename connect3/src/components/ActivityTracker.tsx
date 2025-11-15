@@ -27,48 +27,60 @@ export function ActivityTracker() {
     : motivationalMessages[0];
 
   return (
-    <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-3xl p-4 shadow-lg border-2 border-green-100">
-      <div className="flex items-center justify-between gap-4">
+    <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-3xl p-6 shadow-lg border-2 border-green-200">
+      <div className="flex items-center justify-between gap-6">
         {/* Left side - Title and Progress */}
-        <div className="flex items-center gap-3">
-          <Footprints className="w-6 h-6 text-green-600" strokeWidth={2.5} />
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">Daily Activity</h2>
-            <p className="text-base text-gray-600">{steps.toLocaleString()} / {goal.toLocaleString()} steps</p>
+        <div className="flex items-center gap-4 flex-1">
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <Footprints className="w-10 h-10 text-green-600" strokeWidth={2.5} />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Daily Activity</h2>
+            <p className="text-xl text-gray-700 font-semibold">{steps.toLocaleString()} / {goal.toLocaleString()} steps</p>
+            {message && (
+              <p className="text-lg text-green-700 mt-2 font-semibold flex items-center gap-2">
+                <Sparkles className="w-5 h-5" strokeWidth={2.5} />
+                {message}
+              </p>
+            )}
           </div>
         </div>
 
         {/* Right side - Progress circle and percentage */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 flex-shrink-0">
           <div className="text-right">
-            <p className="text-2xl font-bold text-green-600">{percentage}%</p>
-            <p className="text-sm text-gray-600">of goal</p>
+            <p className="text-4xl font-bold text-green-600">{percentage}%</p>
+            <p className="text-lg text-gray-600 font-semibold">of goal</p>
           </div>
           <div className="relative flex-shrink-0">
-            <svg width="60" height="60" className="transform -rotate-90">
+            <svg width="80" height="80" className="transform -rotate-90">
               {/* Background circle */}
               <circle
-                cx="30"
-                cy="30"
-                r="25"
+                cx="40"
+                cy="40"
+                r="32"
                 stroke="#e5e7eb"
-                strokeWidth="6"
+                strokeWidth="8"
                 fill="none"
               />
               {/* Progress circle */}
               <circle
-                cx="30"
-                cy="30"
-                r="25"
-                stroke="#10b981"
-                strokeWidth="6"
+                cx="40"
+                cy="40"
+                r="32"
+                stroke="#22c55e"
+                strokeWidth="8"
                 fill="none"
-                strokeDasharray={2 * Math.PI * 25}
-                strokeDashoffset={2 * Math.PI * 25 - (percentage / 100) * 2 * Math.PI * 25}
+                strokeDasharray={2 * Math.PI * 32}
+                strokeDashoffset={2 * Math.PI * 32 - (percentage / 100) * 2 * Math.PI * 32}
                 strokeLinecap="round"
                 className="transition-all duration-1000"
               />
             </svg>
+            {/* Center icon */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <TrendingUp className="w-8 h-8 text-green-600" strokeWidth={2.5} />
+            </div>
           </div>
         </div>
       </div>
